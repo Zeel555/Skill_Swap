@@ -1,0 +1,154 @@
+BACKEND....
+
+server/
+├── controllers/
+│   ├── authController.js
+│   ├── userController.js
+│   ├── swapController.js
+│   └── chatController.js
+├── models/
+│   ├── User.js
+│   ├── Swap.js
+│   └── Message.js
+├── routes/
+│   ├── authRoutes.js
+│   ├── userRoutes.js
+│   ├── swapRoutes.js
+│   └── chatRoutes.js
+├── middleware/
+│   └── authMiddleware.js
+├── config/
+│   └── db.js
+├── server.js
+└── .env
+
+
+
+FRONTEND....
+
+src/
+│
+├── app/
+│   ├── store.js              # Redux store
+│   ├── rootReducer.js
+│   └── AppProviders.jsx      # Redux + Router + Socket provider
+│
+├── features/                 # 🔥 MAIN POWER
+│   │
+│   ├── auth/
+│   │   ├── authSlice.js
+│   │   ├── authThunks.js
+│   │   ├── Login.jsx
+│   │   ├── Register.jsx
+│   │   └── ForgotPassword.jsx
+│   │
+│   ├── users/
+│   │   ├── userSlice.js
+│   │   ├── Profile.jsx
+│   │   ├── EditProfile.jsx
+│   │   └── SkillEditor.jsx
+│   │
+│   ├── swaps/
+│   │   ├── swapSlice.js
+│   │   ├── CreateSwap.jsx
+│   │   ├── SwapList.jsx
+│   │   └── SwapDetails.jsx
+│   │
+│   ├── chat/
+│   │   ├── chatSlice.js
+│   │   ├── ChatWindow.jsx
+│   │   └── MessageBubble.jsx
+│   │
+│   ├── notifications/
+│   │   ├── notificationSlice.js
+│   │   └── NotificationList.jsx
+│   │
+│   └── admin/
+│       ├── adminSlice.js
+│       ├── Dashboard.jsx
+│       ├── UsersTable.jsx
+│       ├── SwapsTable.jsx
+│       └── Reports.jsx
+│
+├── components/               # Reusable UI ONLY
+│   ├── Button.jsx
+│   ├── Input.jsx
+│   ├── Modal.jsx
+│   ├── Card.jsx
+│   ├── Badge.jsx
+│   ├── Loader.jsx
+│   └── Toast.jsx
+│
+├── layouts/
+│   ├── AuthLayout.jsx
+│   ├── UserLayout.jsx
+│   └── AdminLayout.jsx
+│
+├── routes/
+│   ├── AppRoutes.jsx
+│   ├── ProtectedRoute.jsx
+│   └── AdminRoute.jsx
+│
+├── services/                 # API calls only
+│   ├── api.js                # Axios instance
+│   ├── authService.js
+│   ├── userService.js
+│   ├── swapService.js
+│   ├── chatService.js
+│   └── adminService.js
+│
+├── hooks/
+│   ├── useAuth.js
+│   ├── useSocket.js
+│   └── useDebounce.js
+│
+├── utils/
+│   ├── constants.js
+│   ├── validators.js
+│   └── formatters.js
+│
+├── pages/                    # Route-level pages only
+│   ├── Home.jsx
+│   ├── LoginPage.jsx
+│   ├── RegisterPage.jsx
+│   ├── UserDashboard.jsx
+│   └── AdminDashboard.jsx
+│
+├── styles/
+│   └── globals.css
+│
+├── App.jsx
+└── main.jsx
+
+/////FLOW/////
+services
+ → thunks
+   → slices
+     → hooks
+       → feature components
+         → pages
+           → routes
+             → layouts
+
+
+zeel
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5NTc0ZWY1NTM0MGI0MzgxYWI1Y2U2YSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzY3MzI5OTgyLCJleHAiOjE3Njc5MzQ3ODJ9.SUQtlzUgjeg8EhXFcwweewyDhHQAtj7q5kRp6IF_OIc
+
+ansh
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5NTc1Yjk1YTU0NWQxYWM4YTE3YjcwNiIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzY3NDU0NzYwLCJleHAiOjE3NjgwNTk1NjB9.ZHskP1O7LdDGwY2xDxkw0ZMjfEAUZZ79O3wVLn0jYJM
+
+admin
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5NTkxY2YyYWIwNzE1YzhhODc4ODQ3NCIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzY3NDQ3Nzk1LCJleHAiOjE3NjgwNTI1OTV9.4HeWFoYpsU9v-qw5n9ek8Hg9KkcBJTRDTD_a86sGJoQ
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5NTkxY2YyYWIwNzE1YzhhODc4ODQ3NCIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc2NzQ0NzkyOSwiZXhwIjoxNzY4MDUyNzI5fQ.EZ1Q1HtXA1lq3f0sbkLG9vok94MG7uy8q-LIwIHaTTY
+
+
+
+
+t41TD8H2Um64UUhk
+zeelsadariya_db_user
+
+mongodb+srv://zeelsadariya_db_user:t41TD8H2Um64UUhk@skillswap-cluster.1ivnymo.mongodb.net/?appName=skillswap-cluster

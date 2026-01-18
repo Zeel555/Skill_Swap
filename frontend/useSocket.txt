@@ -1,0 +1,45 @@
+import { useEffect, useRef } from "react";
+import { useSelector } from "react-redux";
+import { io } from "socket.io-client";
+
+
+export const useSocket = () => {
+  const socketRef = useRef(null);
+  const { user } = useSelector((state) => state.auth);
+  // Use base URL without /api for Socket.IO
+  const baseUrl = import.meta.env.VITE_API_URL 
+    ? import.meta.env.VITE_API_URL.replace('/api', '') 
+    : "http://localhost:5000";
+
+  useEffect(() => {
+    if (user && !socketRef.current) {
+      socketRef.current = io(baseUrl, {
+        auth: {
+          token: localStorage.getItem("token")
+        }
+      });
+
+      socketRef.current.on("connect", () => {
+        console.log("Socket connected");
+      });
+
+      socketRef.current.on("disconnect", () => {
+        console.log("Socket disconnected");
+      });
+
+      socketRef.current.on("connect_error", (error) => {
+        console.error("Socket connection error:", error.message);
+      });
+    }
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
+  }, [user, baseUrl]);
+
+  return socketRef.current;
+};
+

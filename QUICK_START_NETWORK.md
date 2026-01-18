@@ -1,20 +1,28 @@
 # 🚀 Quick Start: Network Setup for Video/Voice Calls
 
+## ⚠️ CRITICAL: Only ONE Backend Server!
+
+**IMPORTANT:** Both users must connect to the **SAME backend server**. Only ONE person should run the backend. The other person's frontend connects to that backend.
+
 ## For Same Network (Two Laptops on Same WiFi)
 
-### Step 1: Find Server IP Address
+### Step 1: Choose Who Runs the Backend
 
-**On the computer running the backend:**
+**Decide which computer will run the backend server** (let's call this "Device 1" or "Server")
+
+### Step 2: Find Server IP Address
+
+**On Device 1 (the one running backend):**
 ```bash
 cd backend
 npm run get-ip
 ```
 
-This will show your network IP (e.g., `192.168.1.100`)
+This will show your network IP (e.g., `10.166.123.70`)
 
-### Step 2: Start Backend
+### Step 3: Start Backend (ONLY on Device 1)
 
-**On the computer running the backend:**
+**On Device 1 ONLY:**
 ```bash
 cd backend
 npm start
@@ -23,39 +31,53 @@ npm start
 You'll see:
 ```
 🚀 Server running on http://localhost:5000
-🌐 Server accessible on network at http://192.168.1.100:5000
+🌐 Server accessible on network at http://10.166.123.70:5000
 ```
 
-### Step 3: Start Frontend
+**⚠️ Device 2 should NOT run the backend!**
+
+### Step 4: Start Frontend on Both Devices
 
 **⚠️ IMPORTANT: For camera/microphone to work, both devices must use `localhost` for frontend access (browsers require secure context).**
 
-**On Device 1 (Server):**
+**On Device 1 (Server - running backend):**
 ```bash
 cd frontend
 npm run dev
 ```
 - Access: `http://localhost:5173`
+- Frontend connects to backend on `localhost:5000` (automatic)
 
-**On Device 2:**
-1. Create `frontend/.env` file:
+**On Device 2 (Client - NOT running backend):**
+1. **Create `frontend/.env` file:**
    ```env
-   VITE_API_URL=http://192.168.1.100:5000/api
+   VITE_API_URL=http://10.166.123.70:5000/api
    ```
-   (Replace `192.168.1.100` with Device 1's actual IP)
+   ⚠️ **Replace `10.166.123.70` with Device 1's actual IP from Step 2**
 
-2. Start frontend:
+2. **Start frontend:**
    ```bash
    cd frontend
    npm run dev
    ```
 
-3. Access: `http://localhost:5173`
+3. **Access: `http://localhost:5173`**
 
-**Why localhost?**
+**Why localhost for frontend?**
 - Browsers only allow camera/microphone on HTTPS or localhost
-- Network IPs (like 192.168.1.100) are not considered secure
+- Network IPs (like 10.166.123.70) are not considered secure
 - Device 2 connects to Device 1's backend via network IP, but uses localhost for frontend
+
+### Step 5: Verify Setup
+
+**Check Device 1's backend console:**
+- Should see: `🔌 Socket connected: [socket-id] [User1 Name]`
+- Should see: `🔌 Socket connected: [socket-id] [User2 Name]`
+- Both users should appear in socket connections
+
+**Check Device 2's backend console:**
+- ⚠️ **Device 2 should NOT have a backend running!**
+- If Device 2 is running backend, **STOP IT** - only Device 1 runs backend
 
 ### Step 4: Test Calls
 

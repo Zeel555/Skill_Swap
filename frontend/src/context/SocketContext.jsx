@@ -8,9 +8,24 @@ export const SocketProvider = ({ children }) => {
   const socketRef = useRef(null);
   const { user } = useSelector((state) => state.auth);
 
-  const baseUrl = import.meta.env.VITE_API_URL
-    ? import.meta.env.VITE_API_URL.replace("/api", "")
-    : "http://localhost:5000";
+  // Import utility to get API URL (supports network IP)
+  const getApiUrl = () => {
+    if (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL.trim() !== "") {
+      return import.meta.env.VITE_API_URL.replace("/api", "");
+    }
+    
+    // If accessing from network IP, use that for backend
+    const hostname = window.location.hostname;
+    if (hostname !== "localhost" && hostname !== "127.0.0.1") {
+      const protocol = window.location.protocol === "https:" ? "https:" : "http:";
+      const backendPort = import.meta.env.VITE_BACKEND_PORT || "5000";
+      return `${protocol}//${hostname}:${backendPort}`;
+    }
+    
+    return "http://localhost:5000";
+  };
+
+  const baseUrl = getApiUrl();
 
   useEffect(() => {
     if (user && !socketRef.current) {

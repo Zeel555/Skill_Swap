@@ -1,8 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import { useSocket } from "../../context/SocketContext";
 
+// Enhanced ICE configuration for better connectivity (local network + internet)
 const ICE_CONFIG = {
-  iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+  iceServers: [
+    // Google STUN servers
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun2.l.google.com:19302" },
+    // Additional STUN servers for better connectivity
+    { urls: "stun:stun.stunprotocol.org:3478" },
+    { urls: "stun:stun.voiparound.com" },
+    { urls: "stun:stun.voipbuster.com" },
+    // TURN servers (for NAT traversal - you can add your own TURN server here)
+    // Note: Free TURN servers are limited. For production, use a paid TURN service
+    // Example: { urls: "turn:your-turn-server.com:3478", username: "user", credential: "pass" }
+  ],
+  iceCandidatePoolSize: 10,
 };
 
 const useWebRTC = (roomId) => {
@@ -85,8 +99,20 @@ const useWebRTC = (roomId) => {
 
     pc.oniceconnectionstatechange = () => {
       console.log("🔌 ICE connection state:", pc.iceConnectionState);
-      if (pc.iceConnectionState === "failed" || pc.iceConnectionState === "disconnected") {
-        console.warn("⚠️ Connection issue detected");
+      if (pc.iceConnectionState === "failed") {
+        console.error("❌ ICE connection failed - may need TURN server for NAT traversal");
+        alert("Connection failed. If on different networks, you may need a TURN server.");
+      } else if (pc.iceConnectionState === "disconnected") {
+        console.warn("⚠️ Connection disconnected");
+      } else if (pc.iceConnectionState === "connected") {
+        console.log("✅ ICE connection established");
+      }
+    };
+
+    pc.onconnectionstatechange = () => {
+      console.log("🔗 Peer connection state:", pc.connectionState);
+      if (pc.connectionState === "failed") {
+        console.error("❌ Peer connection failed");
       }
     };
 

@@ -135,16 +135,26 @@ const VideoCall = forwardRef(({ roomId, onCallStateChange, selectedUser }, ref) 
 
       {/* 🎥 Video Area - Only show for video calls */}
       {callStarted && callType === "video" && (
-        <div className="flex flex-col gap-4 sm:flex-row">
-          <div className="flex-1">
+        <div className="flex flex-col gap-4 sm:flex-row mb-4">
+          <div className="flex-1 relative">
             <p className="mb-2 text-sm font-medium text-gray-700">You</p>
-            <video
-              ref={localVideoRef}
-              autoPlay
-              muted
-              playsInline
-              className="h-48 w-full rounded-lg bg-gray-900 object-cover"
-            />
+            <div className="relative">
+              <video
+                ref={localVideoRef}
+                autoPlay
+                muted
+                playsInline
+                className="h-48 w-full rounded-lg bg-gray-900 object-cover"
+                onLoadedMetadata={(e) => {
+                  e.target.play().catch(err => console.error("Local video play error:", err));
+                }}
+              />
+              {isCameraOff && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-800 rounded-lg">
+                  <span className="text-white text-lg">📷 Camera Off</span>
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex-1">
             <p className="mb-2 text-sm font-medium text-gray-700">Remote User</p>
@@ -153,6 +163,9 @@ const VideoCall = forwardRef(({ roomId, onCallStateChange, selectedUser }, ref) 
               autoPlay
               playsInline
               className="h-48 w-full rounded-lg bg-gray-900 object-cover"
+              onLoadedMetadata={(e) => {
+                e.target.play().catch(err => console.error("Remote video play error:", err));
+              }}
             />
           </div>
         </div>

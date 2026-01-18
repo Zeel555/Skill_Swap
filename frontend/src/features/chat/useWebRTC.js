@@ -141,6 +141,11 @@ const useWebRTC = (roomId) => {
 
       if (localVideoRef.current && type === "video") {
         localVideoRef.current.srcObject = stream;
+        // Force video to play
+        localVideoRef.current.play().catch(err => {
+          console.error("Error playing local video:", err);
+        });
+        console.log("✅ Local video stream attached and playing");
       }
 
       return stream;
@@ -183,9 +188,14 @@ const useWebRTC = (roomId) => {
     };
 
     pc.ontrack = (e) => {
-      console.log("📹 Received remote stream");
-      if (remoteVideoRef.current) {
+      console.log("📹 Received remote stream", e.streams);
+      if (remoteVideoRef.current && e.streams && e.streams[0]) {
         remoteVideoRef.current.srcObject = e.streams[0];
+        // Force video to play
+        remoteVideoRef.current.play().catch(err => {
+          console.error("Error playing remote video:", err);
+        });
+        console.log("✅ Remote video stream attached and playing");
       }
     };
 
@@ -343,20 +353,41 @@ const useWebRTC = (roomId) => {
   };
 
   const endCall = () => {
+    console.log("📞 Ending call...");
+    
     // Notify the other user that the call ended
-    if (socket && roomId) {
-      socket.emit("call-ended", { roomId });
+    if (socket && roomId && socket.connected) {
+      try {
+        socket.emit("call-ended", { roomId });
+      } catch (err) {
+        console.error("Error emitting call-ended:", err);
+      }
     }
 
-    localStreamRef.current?.getTracks().forEach((t) => t.stop());
-    peerRef.current?.close();
+    // Stop all media tracks
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((t) => {
+        t.stop();
+        console.log("🛑 Stopped track:", t.kind);
+      });
+      localStreamRef.current = null;
+    }
 
-    localStreamRef.current = null;
-    peerRef.current = null;
+    // Close peer connection
+    if (peerRef.current) {
+      peerRef.current.close();
+      peerRef.current = null;
+    }
 
-    if (localVideoRef.current) localVideoRef.current.srcObject = null;
-    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+    // Clear video elements
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
+    }
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+    }
 
+    // Reset all state
     setCallStarted(false);
     setIncomingCall(false);
     setIncomingOffer(null);
@@ -364,6 +395,8 @@ const useWebRTC = (roomId) => {
     setCallType(null);
     setIsMuted(false);
     setIsCameraOff(false);
+    
+    console.log("✅ Call ended and cleaned up");
   };
 
   /* ---------------- SOCKET LISTENERS ---------------- */
@@ -407,13 +440,17 @@ const useWebRTC = (roomId) => {
 
     socket.on("call-rejected", () => {
       console.log("📞 Call was rejected");
-      endCall();
-      alert("Call was rejected by the other user");
+      if (callStarted || incomingCall) {
+        endCall();
+        alert("Call was rejected by the other user");
+      }
     });
 
     socket.on("call-ended", () => {
       console.log("📞 Call ended by other user");
-      endCall();
+      if (callStarted) {
+        endCall();
+      }
     });
 
     return () => {

@@ -42,17 +42,29 @@ const ChatWindow = () => {
 
   useEffect(() => {
     if (socket && userId) {
-      socket.on("receiveMessage", (data) => {
-        if (data.sender === userId || data.receiver === userId) {
-          dispatch(addMessage({ userId, message: data }));
+      const handleReceiveMessage = (data) => {
+        console.log("📨 Received message via socket:", data);
+        // Check if message is for this chat
+        if (data.sender === userId || (data.sender === user._id && data.receiver === userId)) {
+          // Format message to match expected structure
+          const formattedMessage = {
+            _id: data._id || Date.now().toString(),
+            sender: data.sender || data.senderId,
+            receiver: data.receiver || data.receiverId || userId,
+            message: data.message || data.text,
+            createdAt: data.createdAt || new Date().toISOString(),
+          };
+          dispatch(addMessage({ userId, message: formattedMessage }));
         }
-      });
+      };
+
+      socket.on("receiveMessage", handleReceiveMessage);
 
       return () => {
-        socket.off("receiveMessage");
+        socket.off("receiveMessage", handleReceiveMessage);
       };
     }
-  }, [socket, userId, dispatch]);
+  }, [socket, userId, dispatch, user._id]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -68,11 +80,16 @@ const ChatWindow = () => {
 
     if (sendMessage.fulfilled.match(result)) {
       setMessage("");
-      if (socket) {
+      // Add message to local state immediately for instant feedback
+      dispatch(addMessage({ userId, message: result.payload }));
+      
+      // Also emit via socket for real-time delivery
+      if (socket && socket.connected) {
         socket.emit("sendMessage", {
           receiverId: userId,
           message: result.payload.message
         });
+        console.log("📤 Message sent via socket to:", userId);
       }
     }
   };

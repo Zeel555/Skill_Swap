@@ -170,10 +170,15 @@ io.on("connection", (socket) => {
 
   // ================= CHAT =================
   socket.on("sendMessage", ({ receiverId, message }) => {
-    io.to(receiverId).emit("receiveMessage", {
-      sender: socket.user._id,
-      message,
+    console.log("📤 Message from", socket.user.name, "to", receiverId);
+    io.to(receiverId.toString()).emit("receiveMessage", {
+      _id: Date.now().toString(), // Temporary ID
+      sender: socket.user._id.toString(),
+      receiver: receiverId.toString(),
+      message: message,
+      createdAt: new Date().toISOString(),
     });
+    console.log("✅ Message forwarded to receiver");
   });
 
   // ================= NOTIFICATIONS =================
@@ -230,10 +235,14 @@ io.on("connection", (socket) => {
       from: socket.user._id,
     });
     console.log("📞 Call ended in room:", roomId);
+    // Leave the call room
+    socket.leave(roomId);
   });
 
   socket.on("disconnect", () => {
-    console.log("❌ Socket disconnected:", socket.id);
+    console.log("❌ Socket disconnected:", socket.id, socket.user?.name);
+    // Clean up: leave all rooms on disconnect
+    // Socket.io automatically handles this, but we log it
   });
 });
 

@@ -135,13 +135,17 @@ const ChatWindow = () => {
 
       {/* ✅ VIDEO / VOICE CALL CONTROLS */}
       <div>
-        {callRoomId && (
+        {callRoomId ? (
           <VideoCall
             ref={videoCallRef}
             roomId={callRoomId}
             onCallStateChange={setCallState}
             selectedUser={selectedUser}
           />
+        ) : (
+          <div className="px-4 py-2 text-xs text-gray-500">
+            ⚠️ Call room not ready. Socket: {socket ? (socket.connected ? "✅ Connected" : "❌ Disconnected") : "❌ Not initialized"}
+          </div>
         )}
       </div>
 

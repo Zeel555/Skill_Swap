@@ -187,15 +187,21 @@ io.on("connection", (socket) => {
   // ================= WEBRTC =================
   socket.on("join-call", (roomId) => {
     socket.join(roomId);
-    console.log("📞 join-call:", socket.user.name, roomId);
+    const room = io.sockets.adapter.rooms.get(roomId);
+    console.log("📞 join-call:", socket.user.name, "joined room:", roomId, "| Users in room:", room ? Array.from(room).length : 0);
   });
 
   socket.on("offer", ({ roomId, offer, callType }) => {
+    console.log("📞 Offer received from:", socket.user.name, "to room:", roomId, "type:", callType);
+    const room = io.sockets.adapter.rooms.get(roomId);
+    console.log("👥 Users in room:", roomId, ":", room ? Array.from(room).length : 0);
+    
     socket.to(roomId).emit("offer", {
       offer,
       from: socket.user._id,
       callType: callType || "video", // Forward callType to receiver
     });
+    console.log("✅ Offer forwarded to room:", roomId);
   });
 
   socket.on("answer", ({ roomId, answer }) => {

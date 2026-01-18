@@ -40,7 +40,16 @@ export const SocketProvider = ({ children }) => {
         // Join user's personal room for receiving calls and notifications
         if (user?._id) {
           socketRef.current.emit("join", user._id);
+          console.log("🟢 Joined personal room:", user._id);
         }
+      });
+
+      socketRef.current.on("disconnect", () => {
+        console.log("❌ GLOBAL socket disconnected");
+      });
+
+      socketRef.current.on("connect_error", (error) => {
+        console.error("❌ Socket connection error:", error);
       });
     }
 

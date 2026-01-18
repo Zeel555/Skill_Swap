@@ -16,11 +16,20 @@ const ICE_CONFIG = {
     // Note: Free TURN servers are limited. For production, use a paid TURN service
     // Example: { urls: "turn:your-turn-server.com:3478", username: "user", credential: "pass" }
   ],
-  iceCandidatePoolSize: 10,
+  iceCandidatePoolSize: 10
 };
 
 const useWebRTC = (roomId) => {
   const socket = useSocket();
+  
+  // Debug: Log socket state
+  useEffect(() => {
+    if (socket) {
+      console.log("🔌 Socket state - Connected:", socket.connected, "ID:", socket.id, "Room:", roomId);
+    } else {
+      console.warn("⚠️ Socket is null in useWebRTC");
+    }
+  }, [socket, roomId]);
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -38,8 +47,13 @@ const useWebRTC = (roomId) => {
   /* ---------------- JOIN ROOM ONCE ---------------- */
   useEffect(() => {
     if (socket && roomId) {
-      console.log("🟢 joining call room:", roomId);
+      console.log("🟢 Joining call room:", roomId, "| Socket ID:", socket.id, "| Socket connected:", socket.connected);
       socket.emit("join-call", roomId);
+      
+      // Verify room join after a short delay
+      setTimeout(() => {
+        console.log("🔍 Verifying room join for:", roomId);
+      }, 500);
     }
   }, [socket, roomId]);
 
@@ -129,10 +143,22 @@ const useWebRTC = (roomId) => {
   const startCall = async (type = "video") => {
     try {
       if (!socket || !roomId) {
-        console.error("❌ Socket or roomId not available");
+        console.error("❌ Socket or roomId not available", { socket: !!socket, roomId, socketConnected: socket?.connected });
+        alert("Socket not connected. Please refresh the page.");
         return;
       }
 
+      if (!socket.connected) {
+        console.error("❌ Socket not connected");
+        alert("Socket not connected. Please refresh the page.");
+        return;
+      }
+
+      console.log("📞 Starting call - Type:", type, "Room:", roomId, "Socket ID:", socket.id);
+      
+      // Ensure we're in the room
+      socket.emit("join-call", roomId);
+      
       await startLocalStream(type);
       createPeerConnection();
 
@@ -142,11 +168,13 @@ const useWebRTC = (roomId) => {
       });
       await peerRef.current.setLocalDescription(offer);
 
-      console.log("📞 Initiating call:", type, "in room:", roomId);
+      console.log("📞 Sending offer - Room:", roomId, "Type:", type, "Socket connected:", socket.connected);
       socket.emit("offer", { roomId, offer, callType: type });
+      console.log("✅ Offer sent");
       setCallStarted(true);
     } catch (error) {
       console.error("❌ Error starting call:", error);
+      alert(`Failed to start call: ${error.message}`);
       // Clean up on error
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach(track => track.stop());
@@ -247,14 +275,21 @@ const useWebRTC = (roomId) => {
 
   /* ---------------- SOCKET LISTENERS ---------------- */
   useEffect(() => {
-    if (!socket) return;
+    if (!socket) {
+      console.log("⚠️ Socket not available for event listeners");
+      return;
+    }
 
-    socket.on("offer", ({ offer, from, callType: incomingType }) => {
-      console.log("📞 Incoming call from:", from, "type:", incomingType);
+    console.log("🔌 Setting up socket listeners for room:", roomId);
+
+    const handleOffer = ({ offer, from, callType: incomingType }) => {
+      console.log("📞 Incoming call received! From:", from, "Type:", incomingType, "Room:", roomId);
       setIncomingOffer(offer);
       setIncomingCallType(incomingType || "video");
       setIncomingCall(true);
-    });
+    };
+
+    socket.on("offer", handleOffer);
 
     socket.on("answer", async ({ answer }) => {
       try {
@@ -289,13 +324,14 @@ const useWebRTC = (roomId) => {
     });
 
     return () => {
+      console.log("🧹 Cleaning up socket listeners");
       socket.off("offer");
       socket.off("answer");
       socket.off("ice-candidate");
       socket.off("call-rejected");
       socket.off("call-ended");
     };
-  }, [socket]);
+  }, [socket, roomId]);
 
   return {
     localVideoRef,

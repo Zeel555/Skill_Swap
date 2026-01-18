@@ -22,6 +22,10 @@ export const SocketProvider = ({ children }) => {
 
       socketRef.current.on("connect", () => {
         console.log("✅ GLOBAL socket connected:", socketRef.current.id);
+        // Join user's personal room for receiving calls and notifications
+        if (user?._id) {
+          socketRef.current.emit("join", user._id);
+        }
       });
     }
 

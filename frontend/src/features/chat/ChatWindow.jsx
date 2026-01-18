@@ -99,19 +99,35 @@ const ChatWindow = () => {
         </div>
 
         {/* Call Buttons - Only show when no call is active */}
-        {!callState.callStarted && !callState.incomingCall && (
+        {!callState.callStarted && !callState.incomingCall && callRoomId && (
           <div className="flex gap-2">
             <button
-              onClick={() => videoCallRef.current?.startVoiceCall()}
-              className="flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+              onClick={() => {
+                if (videoCallRef.current) {
+                  videoCallRef.current.startVoiceCall();
+                } else {
+                  console.error("VideoCall component not ready");
+                  alert("Please wait, call system is initializing...");
+                }
+              }}
+              className="flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!callRoomId}
             >
-              📞 Voice
+              <span>📞</span> Voice
             </button>
             <button
-              onClick={() => videoCallRef.current?.startVideoCall()}
-              className="flex items-center gap-2 rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 transition-colors"
+              onClick={() => {
+                if (videoCallRef.current) {
+                  videoCallRef.current.startVideoCall();
+                } else {
+                  console.error("VideoCall component not ready");
+                  alert("Please wait, call system is initializing...");
+                }
+              }}
+              className="flex items-center gap-2 rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!callRoomId}
             >
-              📹 Video
+              <span>📹</span> Video
             </button>
           </div>
         )}

@@ -96,6 +96,10 @@ io.on("connection", (socket) => {
     console.log("🟢 User joined room:", userId);
   });
 
+  // Auto-join user's personal room on connection
+  socket.join(socket.user._id.toString());
+  console.log("🟢 User auto-joined personal room:", socket.user._id);
+
   // ================= CHAT =================
   socket.on("sendMessage", ({ receiverId, message }) => {
     io.to(receiverId).emit("receiveMessage", {
@@ -118,10 +122,11 @@ io.on("connection", (socket) => {
     console.log("📞 join-call:", socket.user.name, roomId);
   });
 
-  socket.on("offer", ({ roomId, offer }) => {
+  socket.on("offer", ({ roomId, offer, callType }) => {
     socket.to(roomId).emit("offer", {
       offer,
       from: socket.user._id,
+      callType: callType || "video", // Forward callType to receiver
     });
   });
 
@@ -137,6 +142,20 @@ io.on("connection", (socket) => {
       candidate,
       from: socket.user._id,
     });
+  });
+
+  socket.on("call-rejected", ({ roomId }) => {
+    socket.to(roomId).emit("call-rejected", {
+      from: socket.user._id,
+    });
+    console.log("📞 Call rejected in room:", roomId);
+  });
+
+  socket.on("call-ended", ({ roomId }) => {
+    socket.to(roomId).emit("call-ended", {
+      from: socket.user._id,
+    });
+    console.log("📞 Call ended in room:", roomId);
   });
 
   socket.on("disconnect", () => {

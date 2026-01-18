@@ -31,81 +31,148 @@ const useWebRTC = (roomId) => {
 
   /* ---------------- MEDIA ---------------- */
   const startLocalStream = async (type = "video") => {
-    if (localStreamRef.current) return localStreamRef.current;
+    try {
+      if (localStreamRef.current) {
+        // Stop existing tracks if switching call types
+        localStreamRef.current.getTracks().forEach(track => track.stop());
+        localStreamRef.current = null;
+      }
 
-    const constraints = {
-      audio: true,
-      video: type === "video" ? true : false,
-    };
+      const constraints = {
+        audio: true,
+        video: type === "video" ? { facingMode: "user" } : false,
+      };
 
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
-    localStreamRef.current = stream;
-    setCallType(type);
+      localStreamRef.current = stream;
+      setCallType(type);
 
-    if (localVideoRef.current && type === "video") {
-      localVideoRef.current.srcObject = stream;
+      if (localVideoRef.current && type === "video") {
+        localVideoRef.current.srcObject = stream;
+      }
+
+      return stream;
+    } catch (error) {
+      console.error("❌ Error accessing media devices:", error);
+      alert(`Failed to access ${type === "video" ? "camera/microphone" : "microphone"}. Please check permissions.`);
+      throw error;
     }
-
-    return stream;
   };
 
   /* ---------------- PEER ---------------- */
   const createPeerConnection = () => {
-    if (peerRef.current) return;
+    if (peerRef.current) {
+      // Close existing connection if switching
+      peerRef.current.close();
+      peerRef.current = null;
+    }
 
     const pc = new RTCPeerConnection(ICE_CONFIG);
 
     pc.onicecandidate = (e) => {
-      if (e.candidate) {
+      if (e.candidate && socket && roomId) {
         socket.emit("ice-candidate", { roomId, candidate: e.candidate });
       }
     };
 
     pc.ontrack = (e) => {
-      remoteVideoRef.current.srcObject = e.streams[0];
+      console.log("📹 Received remote stream");
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = e.streams[0];
+      }
     };
 
-    localStreamRef.current.getTracks().forEach((track) =>
-      pc.addTrack(track, localStreamRef.current)
-    );
+    pc.oniceconnectionstatechange = () => {
+      console.log("🔌 ICE connection state:", pc.iceConnectionState);
+      if (pc.iceConnectionState === "failed" || pc.iceConnectionState === "disconnected") {
+        console.warn("⚠️ Connection issue detected");
+      }
+    };
+
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) =>
+        pc.addTrack(track, localStreamRef.current)
+      );
+    }
 
     peerRef.current = pc;
   };
 
   /* ---------------- CALLER ---------------- */
   const startCall = async (type = "video") => {
-    await startLocalStream(type);
-    createPeerConnection();
+    try {
+      if (!socket || !roomId) {
+        console.error("❌ Socket or roomId not available");
+        return;
+      }
 
-    const offer = await peerRef.current.createOffer();
-    await peerRef.current.setLocalDescription(offer);
+      await startLocalStream(type);
+      createPeerConnection();
 
-    socket.emit("offer", { roomId, offer, callType: type });
-    setCallStarted(true);
+      const offer = await peerRef.current.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: type === "video",
+      });
+      await peerRef.current.setLocalDescription(offer);
+
+      console.log("📞 Initiating call:", type, "in room:", roomId);
+      socket.emit("offer", { roomId, offer, callType: type });
+      setCallStarted(true);
+    } catch (error) {
+      console.error("❌ Error starting call:", error);
+      // Clean up on error
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(track => track.stop());
+        localStreamRef.current = null;
+      }
+      if (peerRef.current) {
+        peerRef.current.close();
+        peerRef.current = null;
+      }
+    }
   };
 
   /* ---------------- RECEIVER ---------------- */
   const acceptCall = async () => {
-    if (!incomingOffer || !incomingCallType) return;
+    try {
+      if (!incomingOffer || !incomingCallType) {
+        console.error("❌ No incoming offer or call type");
+        return;
+      }
 
-    await startLocalStream(incomingCallType);
-    createPeerConnection();
+      if (!socket || !roomId) {
+        console.error("❌ Socket or roomId not available");
+        return;
+      }
 
-    await peerRef.current.setRemoteDescription(incomingOffer);
+      await startLocalStream(incomingCallType);
+      createPeerConnection();
 
-    const answer = await peerRef.current.createAnswer();
-    await peerRef.current.setLocalDescription(answer);
+      await peerRef.current.setRemoteDescription(new RTCSessionDescription(incomingOffer));
 
-    socket.emit("answer", { roomId, answer });
+      const answer = await peerRef.current.createAnswer();
+      await peerRef.current.setLocalDescription(answer);
 
-    setIncomingCall(false);
-    setIncomingOffer(null);
-    setIncomingCallType(null);
-    setCallStarted(true);
+      console.log("✅ Accepting call:", incomingCallType, "in room:", roomId);
+      socket.emit("answer", { roomId, answer });
+
+      setIncomingCall(false);
+      setIncomingOffer(null);
+      setIncomingCallType(null);
+      setCallStarted(true);
+    } catch (error) {
+      console.error("❌ Error accepting call:", error);
+      alert("Failed to accept call. Please try again.");
+      rejectCall();
+    }
   };
 
   const rejectCall = () => {
+    if (socket && roomId) {
+      // Notify the caller that the call was rejected
+      socket.emit("call-rejected", { roomId });
+    }
     setIncomingCall(false);
     setIncomingOffer(null);
     setIncomingCallType(null);
@@ -129,6 +196,11 @@ const useWebRTC = (roomId) => {
   };
 
   const endCall = () => {
+    // Notify the other user that the call ended
+    if (socket && roomId) {
+      socket.emit("call-ended", { roomId });
+    }
+
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     peerRef.current?.close();
 
@@ -159,19 +231,43 @@ const useWebRTC = (roomId) => {
     });
 
     socket.on("answer", async ({ answer }) => {
-      await peerRef.current.setRemoteDescription(answer);
+      try {
+        if (peerRef.current && answer) {
+          await peerRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+          console.log("✅ Call answered");
+        }
+      } catch (error) {
+        console.error("❌ Error setting remote description:", error);
+      }
     });
 
     socket.on("ice-candidate", async ({ candidate }) => {
-      if (candidate && peerRef.current) {
-        await peerRef.current.addIceCandidate(candidate);
+      try {
+        if (candidate && peerRef.current) {
+          await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+        }
+      } catch (error) {
+        console.error("❌ Error adding ICE candidate:", error);
       }
+    });
+
+    socket.on("call-rejected", () => {
+      console.log("📞 Call was rejected");
+      endCall();
+      alert("Call was rejected by the other user");
+    });
+
+    socket.on("call-ended", () => {
+      console.log("📞 Call ended by other user");
+      endCall();
     });
 
     return () => {
       socket.off("offer");
       socket.off("answer");
       socket.off("ice-candidate");
+      socket.off("call-rejected");
+      socket.off("call-ended");
     };
   }, [socket]);
 

@@ -28,17 +28,34 @@ You'll see:
 
 ### Step 3: Start Frontend
 
-**On the SAME computer (server):**
+**⚠️ IMPORTANT: For camera/microphone to work, both devices must use `localhost` for frontend access (browsers require secure context).**
+
+**On Device 1 (Server):**
 ```bash
 cd frontend
 npm run dev
 ```
+- Access: `http://localhost:5173`
 
-**Access it using the network IP:**
-- Open browser: `http://192.168.1.100:5173` (use your actual IP)
+**On Device 2:**
+1. Create `frontend/.env` file:
+   ```env
+   VITE_API_URL=http://192.168.1.100:5000/api
+   ```
+   (Replace `192.168.1.100` with Device 1's actual IP)
 
-**On the OTHER computer:**
-- Open browser: `http://192.168.1.100:5173` (same IP as server)
+2. Start frontend:
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+
+3. Access: `http://localhost:5173`
+
+**Why localhost?**
+- Browsers only allow camera/microphone on HTTPS or localhost
+- Network IPs (like 192.168.1.100) are not considered secure
+- Device 2 connects to Device 1's backend via network IP, but uses localhost for frontend
 
 ### Step 4: Test Calls
 

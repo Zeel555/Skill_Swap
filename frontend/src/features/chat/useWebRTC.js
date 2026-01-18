@@ -19,6 +19,32 @@ const ICE_CONFIG = {
   iceCandidatePoolSize: 10
 };
 
+// Helper function to check if media devices are available
+const checkMediaDevicesAvailable = () => {
+  // Check if we're in a secure context
+  const isSecureContext = window.isSecureContext || 
+    window.location.protocol === "https:" ||
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1";
+
+  if (!isSecureContext) {
+    return {
+      available: false,
+      error: "Media access requires HTTPS or localhost. Please access via http://localhost:5173 or set up HTTPS."
+    };
+  }
+
+  // Check if getUserMedia is available
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    return {
+      available: false,
+      error: "Your browser doesn't support camera/microphone access. Please use a modern browser (Chrome, Firefox, Edge)."
+    };
+  }
+
+  return { available: true };
+};
+
 const useWebRTC = (roomId) => {
   const socket = useSocket();
   
@@ -30,6 +56,16 @@ const useWebRTC = (roomId) => {
       console.warn("⚠️ Socket is null in useWebRTC");
     }
   }, [socket, roomId]);
+
+  // Check media devices availability on mount
+  useEffect(() => {
+    const check = checkMediaDevicesAvailable();
+    if (!check.available) {
+      console.warn("⚠️ Media devices not available:", check.error);
+    } else {
+      console.log("✅ Media devices available");
+    }
+  }, []);
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -60,6 +96,31 @@ const useWebRTC = (roomId) => {
   /* ---------------- MEDIA ---------------- */
   const startLocalStream = async (type = "video") => {
     try {
+      // Check if getUserMedia is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        // Check for legacy API
+        const getUserMedia = navigator.mediaDevices?.getUserMedia ||
+          navigator.getUserMedia ||
+          navigator.webkitGetUserMedia ||
+          navigator.mozGetUserMedia ||
+          navigator.msGetUserMedia;
+
+        if (!getUserMedia) {
+          const errorMsg = "Your browser doesn't support camera/microphone access. Please use Chrome, Firefox, or Edge.";
+          console.error("❌", errorMsg);
+          alert(errorMsg);
+          throw new Error(errorMsg);
+        }
+
+        // Check if page is in secure context
+        if (window.location.protocol !== "https:" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+          const errorMsg = "Camera/microphone access requires HTTPS or localhost. Please access the app via localhost or set up HTTPS.";
+          console.error("❌", errorMsg);
+          alert(errorMsg + "\n\nTry accessing via: http://localhost:5173");
+          throw new Error(errorMsg);
+        }
+      }
+
       if (localStreamRef.current) {
         // Stop existing tracks if switching call types
         localStreamRef.current.getTracks().forEach(track => track.stop());
@@ -71,7 +132,9 @@ const useWebRTC = (roomId) => {
         video: type === "video" ? { facingMode: "user" } : false,
       };
 
+      console.log("🎥 Requesting media access:", constraints);
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log("✅ Media access granted");
 
       localStreamRef.current = stream;
       setCallType(type);
@@ -83,7 +146,22 @@ const useWebRTC = (roomId) => {
       return stream;
     } catch (error) {
       console.error("❌ Error accessing media devices:", error);
-      alert(`Failed to access ${type === "video" ? "camera/microphone" : "microphone"}. Please check permissions.`);
+      
+      let errorMessage = `Failed to access ${type === "video" ? "camera/microphone" : "microphone"}. `;
+      
+      if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+        errorMessage += "Please allow camera/microphone permissions in your browser settings and try again.";
+      } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
+        errorMessage += "No camera/microphone found. Please connect a device and try again.";
+      } else if (error.name === "NotReadableError" || error.name === "TrackStartError") {
+        errorMessage += "Camera/microphone is being used by another application. Please close it and try again.";
+      } else if (error.message.includes("secure context")) {
+        errorMessage += "Please access the app via localhost or HTTPS.";
+      } else {
+        errorMessage += `Error: ${error.message}`;
+      }
+      
+      alert(errorMessage);
       throw error;
     }
   };
@@ -142,6 +220,13 @@ const useWebRTC = (roomId) => {
   /* ---------------- CALLER ---------------- */
   const startCall = async (type = "video") => {
     try {
+      // Check media devices availability first
+      const mediaCheck = checkMediaDevicesAvailable();
+      if (!mediaCheck.available) {
+        alert(mediaCheck.error + "\n\nFor network access, you may need to:\n1. Use HTTPS\n2. Or access via localhost on each device");
+        return;
+      }
+
       if (!socket || !roomId) {
         console.error("❌ Socket or roomId not available", { socket: !!socket, roomId, socketConnected: socket?.connected });
         alert("Socket not connected. Please refresh the page.");
@@ -190,6 +275,14 @@ const useWebRTC = (roomId) => {
   /* ---------------- RECEIVER ---------------- */
   const acceptCall = async () => {
     try {
+      // Check media devices availability first
+      const mediaCheck = checkMediaDevicesAvailable();
+      if (!mediaCheck.available) {
+        alert(mediaCheck.error + "\n\nFor network access, you may need to:\n1. Use HTTPS\n2. Or access via localhost on each device");
+        rejectCall();
+        return;
+      }
+
       if (!incomingOffer || !incomingCallType) {
         console.error("❌ No incoming offer or call type");
         return;
